@@ -68,7 +68,66 @@ class ICAPHandler(BaseICAPRequestHandler):
             content = upstream.read()
             print(content)
             self.write_chunk(content)
+            
+ def handle_one_request(self):
+        """Handle a single HTTP request.
+        You normally don't need to override this method; see the class
+        __doc__ string for information on how to handle specific HTTP
+        commands such as GET and POST.
+        """
 
+        # Initialize handler state
+        self.enc_req = None
+        self.enc_req_headers = {}
+        self.enc_res_status = None
+        self.enc_res_headers = {}
+        self.has_body = False
+        self.servicename = None
+        self.encapsulated = {}
+        self.ieof = False
+        self.eob = False
+        self.methos = None
+        self.preview = None
+        self.allow = set()
+        self.client_ip = None
+
+        self.icap_headers = {}
+        self.enc_headers = {}
+        self.enc_status = None  # Seriously, need better names
+        self.enc_request = None
+
+        self.icap_response_code = None
+
+        try:
+            self.raw_requestline = self.rfile.readline(65537)
+
+            if not self.raw_requestline:
+                self.close_connection = True
+                return
+
+            self.parse_request()
+
+            mname = (self.servicename + b'_' + self.command).decode("utf-8")
+            if not hasattr(self, mname):
+                self.log_error("%s not found" % mname)
+                raise ICAPError(404)
+
+            method = getattr(self, mname)
+            if not isinstance(method, collections.Callable):
+                raise ICAPError(404)
+            method()
+            self.wfile.flush()
+            self.log_request(self.icap_response_code)
+        except socket.timeout as e:
+            self.log_error("Request timed out: %r", e)
+            self.close_connection = 1
+        except ConnectionResetError as e:
+            return
+        except ICAPError as e:
+            msg = e.message[0] if isinstance(e.message, tuple) else e.message
+            self.send_error(e.code, msg)
+        #except:
+        #    self.send_error(500)
 port = 13440
 
 server = ThreadingSimpleServer((b'', port), ICAPHandler)
