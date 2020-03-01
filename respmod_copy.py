@@ -138,9 +138,9 @@ class ICAPHandler(BaseICAPRequestHandler):
         if self.command in [b'RESPMOD', b'REQMOD']:
             for enc in self.headers.get(b'encapsulated', [b''])[0].split(b','):
                 # TODO: raise ICAPError if Encapsulated is malformed or empty
-                self.log_error(enc)
-                k, v = enc.strip().split(b'=')
-                self.encapsulated[k] = int(v)
+                if len(enc.strip().split(b'=')) > 1:
+                    k, v = enc.strip().split(b'=')
+                    self.encapsulated[k] = int(v)
 
         self.preview = self.headers.get(b'preview', [None])[0]
         self.allow = [
