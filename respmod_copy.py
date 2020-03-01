@@ -7,6 +7,10 @@ import time
 import socket
 import collections
 
+try:
+    from urllib.parse import urlparse
+except ImportError:
+    from urlparse import urlparse
 
 try:
     import socketserver
