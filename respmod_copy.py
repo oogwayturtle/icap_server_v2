@@ -171,6 +171,16 @@ class ICAPHandler(BaseICAPRequestHandler):
         self.servicename = urlparse(self.request_uri)[2].strip(b'/')
             
     def handle_one_request(self):
+        call_method():
+            mname = (self.servicename + b'_' + self.command).decode("utf-8")
+            if not hasattr(self, mname):
+                self.log_error("%s not found" % mname)
+                raise ICAPError(404)
+
+            method = getattr(self, mname)
+            if not isinstance(method, collections.Callable):
+                raise ICAPError(404)
+            method()
         """Handle a single HTTP request.
         You normally don't need to override this method; see the class
         __doc__ string for information on how to handle specific HTTP
@@ -207,16 +217,7 @@ class ICAPHandler(BaseICAPRequestHandler):
                 return
 
             self.parse_request()
-
-            mname = (self.servicename + b'_' + self.command).decode("utf-8")
-            if not hasattr(self, mname):
-                self.log_error("%s not found" % mname)
-                raise ICAPError(404)
-
-            method = getattr(self, mname)
-            if not isinstance(method, collections.Callable):
-                raise ICAPError(404)
-            method()
+            call_method()
             self.wfile.flush()
             self.log_request(self.icap_response_code)
         except socket.timeout as e:
@@ -226,6 +227,7 @@ class ICAPHandler(BaseICAPRequestHandler):
             self.log_error("Connection reset error: %r", e)
             if self.raw_requestline:
                 self.parse_request()
+                call_method()
             else:
                 self.close_connection = True
         except ICAPError as e:
