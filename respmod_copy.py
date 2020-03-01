@@ -4,6 +4,8 @@
 import random
 import tempfile
 import time
+import socket
+import collections
 
 
 try:
@@ -101,7 +103,7 @@ class ICAPHandler(BaseICAPRequestHandler):
 
         try:
             self.raw_requestline = self.rfile.readline(65537)
-
+            self.log_error(self.raw_requestline)
             if not self.raw_requestline:
                 self.close_connection = True
                 return
@@ -123,7 +125,11 @@ class ICAPHandler(BaseICAPRequestHandler):
             self.log_error("Request timed out: %r", e)
             self.close_connection = 1
         except ConnectionResetError as e:
-            return
+            self.log_error("Connection reset error: %r", e)
+            if self.raw_requestline:
+                self.parse_request()
+            else:
+                self.close_connection = True
         except ICAPError as e:
             msg = e.message[0] if isinstance(e.message, tuple) else e.message
             self.send_error(e.code, msg)
