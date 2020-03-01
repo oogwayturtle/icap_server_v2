@@ -87,7 +87,7 @@ class ICAPHandler(BaseICAPRequestHandler):
 
         requestline = self.raw_requestline.rstrip(b'\r\n')
         self.requestline = requestline
-
+        self.log_error(self.requestline)
         words = requestline.split()
         if len(words) != 3:
             raise ICAPError(400, "Bad request syntax (%r)" % requestline)
