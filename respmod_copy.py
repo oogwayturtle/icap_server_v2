@@ -69,7 +69,8 @@ class ICAPHandler(BaseICAPRequestHandler):
             print(content)
             self.write_chunk(content)
             
- def handle_one_request(self):
+            
+    def handle_one_request(self):
         """Handle a single HTTP request.
         You normally don't need to override this method; see the class
         __doc__ string for information on how to handle specific HTTP
