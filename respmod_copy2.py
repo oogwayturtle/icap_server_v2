@@ -38,7 +38,7 @@ class ICAPHandler(BaseICAPRequestHandler):
         self.set_icap_header(b'Transfer-Preview', b'*')
         self.set_icap_header(b'Transfer-Ignore', b'bmp,ico,gif,jpg,jpe,jpeg,png,tiff,crl,avi,divx,flv,h264,mp4,mpg,mpeg,swf,wmv,mp3,wav,ttf,pdf,rar,tar,zip,gz,bz2,jar,js,json,htm,html,dhtml,shtml,css,rss,xml<0d>')
         self.set_icap_header(b'Transfer-Complete', b'')
-        self.set_icap_header(b'Max-Connections', b'100')
+        self.set_icap_header(b'Max-Connections', b'200')
         self.set_icap_header(b'Options-TTL', b'3600')
         self.send_headers(False)
 
@@ -73,15 +73,17 @@ class ICAPHandler(BaseICAPRequestHandler):
                 self.cont()
                 self.read_into(upstream)
             upstream.seek(0)
-            with gzip.open(upstream, "rb") as f:
-                data = f.read()
-                print(data)
+            try:
+                with gzip.open(upstream, "rb") as f:
+                    data = f.read()
+                    print(data)
+            except:
+                pass
             # And write it to downstream
             upstream.seek(0)
             content = upstream.read()
             self.send_headers(True)
             self.write_chunk(content)
-        self.close_connection = True
             
     def parse_request(self):
         """Parse a request (internal).
@@ -191,6 +193,7 @@ class ICAPHandler(BaseICAPRequestHandler):
             if not isinstance(method, collections.Callable):
                 raise ICAPError(404)
             method()
+            self.close_connection = True
         """Handle a single HTTP request.
         You normally don't need to override this method; see the class
         __doc__ string for information on how to handle specific HTTP
