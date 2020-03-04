@@ -29,19 +29,6 @@ class ThreadingSimpleServer(socketserver.ThreadingMixIn, ICAPServer):
     pass
 
 class ICAPHandler(BaseICAPRequestHandler):
-
-    def service_OPTIONS(self):
-        self.set_icap_response(200)
-        self.set_icap_header(b'Methods', b'RESPMOD')
-        self.set_icap_header(b'Service', b'PyICAP Server 1.0')
-        self.set_icap_header(b'Preview', b'0')
-        self.set_icap_header(b'Transfer-Preview', b'*')
-        self.set_icap_header(b'Transfer-Ignore', b'bmp,ico,gif,jpg,jpe,jpeg,png,tiff,crl,avi,divx,flv,h264,mp4,mpg,mpeg,swf,wmv,mp3,wav,ttf,pdf,rar,tar,zip,gz,bz2,jar,js,json,htm,html,dhtml,shtml,css,rss,xml<0d>')
-        self.set_icap_header(b'Transfer-Complete', b'')
-        self.set_icap_header(b'Max-Connections', b'200')
-        self.set_icap_header(b'Options-TTL', b'3600')
-        self.send_headers(False)
-
     def read_into(self, f):
         while True:
             try:
@@ -51,33 +38,7 @@ class ICAPHandler(BaseICAPRequestHandler):
                 f.write(chunk)
             except:
                 return
-    def service_RESPMOD(self):
-        self.set_icap_response(200)
-        self.set_enc_status(b' '.join(self.enc_res_status))
-        for h in self.enc_res_headers:
-            for v in self.enc_res_headers[h]:
-                self.set_enc_header(h, v)
 
-        if not self.has_body:
-            self.send_headers(False)
-            return
-        with tempfile.NamedTemporaryFile(prefix='pyicap.', suffix='.tmp') as upstream:
-            self.read_into(upstream)
-            if self.preview and not self.ieof:
-                self.cont()
-                self.read_into(upstream)
-            upstream.seek(0)
-            try:
-                with gzip.open(upstream, "rb") as f:
-                    data = f.read()
-            except:
-                pass
-            # And write it to downstream
-            upstream.seek(0)
-            content = upstream.read()
-            self.send_headers(True)
-            self.write_chunk(content)
-            
     def parse_request(self):
         """Parse a request (internal).
         The request should be stored in self.raw_requestline; the results
@@ -235,8 +196,80 @@ class ICAPHandler(BaseICAPRequestHandler):
         #except:
         #    self.send_error(500)
 
+    def servicereq_OPTIONS(self):
+        self.set_icap_response(200)
+        self.set_icap_header(b'Methods', b'REQMOD')
+        self.set_icap_header(b'Service', b'PyICAP Server 1.0')
+        try:
+            del self.enc_req_headers[b'x-forwarded-for']
+        except:
+             pass
+        try:    
+            del self.enc_res_headers[b'x-forwarded-for']
+        except:
+            pass
+        try:    
+            del self.enc_res_headers[b'via']
+        except:
+            pass
+        try:
+            del self.enc_req_headers[b'via']
+        except:
+             pass
+        self.send_headers(False)
 
-port = 13440
+    def servicereq_REQMOD(self):
+        self.set_icap_response(200)
+        print(self.enc_req_headers)
+        print(self.enc_res_headers)
+        try:
+            del self.enc_req_headers[b'x-forwarded-for']
+        except:
+             pass
+        try:    
+            del self.enc_res_headers[b'x-forwarded-for']
+        except:
+            pass
+
+        try:    
+            del self.enc_res_headers[b'via']
+        except:
+            pass
+        try:
+            del self.enc_req_headers[b'via']
+        except:
+             pass
+
+        self.set_enc_request(b' '.join(self.enc_req))
+        for h in self.enc_req_headers:
+            for v in self.enc_req_headers[h]:
+                self.set_enc_header(h, v)
+
+        # Copy the request body (in case of a POST for example)
+        if not self.has_body:
+            self.send_headers(False)
+            return
+        else:
+           with tempfile.NamedTemporaryFile(prefix='pyicap.', suffix='.tmp') as upstream:
+               self.read_into(upstream)
+               if self.preview and not self.ieof:
+                   self.cont()
+                   self.read_into(upstream)
+               upstream.seek(0)
+               try:
+                   with gzip.open(upstream, "rb") as f:
+                       data = f.read()
+               except:
+                   data = upstream.read()
+                   pass
+               print (data)
+           # And write it to downstream
+               upstream.seek(0)
+               content = upstream.read()
+               self.send_headers(True)
+               self.write_chunk(content)
+
+port = 13441
 
 server = ThreadingSimpleServer((b'', port), ICAPHandler)
 try:
