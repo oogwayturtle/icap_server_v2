@@ -250,11 +250,19 @@ class ICAPHandler(BaseICAPRequestHandler):
             self.send_headers(False)
             return
         else:
-           with tempfile.NamedTemporaryFile(prefix='pyicap.', suffix='.tmp') as upstream:
+           with tempfile.NamedTemporaryFile(prefix='pyicap2.', suffix='.tmp') as upstream:
                self.read_into(upstream)
                if self.preview and not self.ieof:
                    self.cont()
                    self.read_into(upstream)
+               else:
+                   self.send_headers(True)
+                   upstream.seek(0)
+                   content = upstream.read()
+                   if len(content) > 0:
+                      self.write_chunk(content)
+                      self.write_chunk(b'')
+                      return
                upstream.seek(0)
                try:
                    with gzip.open(upstream, "rb") as f:
@@ -268,6 +276,7 @@ class ICAPHandler(BaseICAPRequestHandler):
                content = upstream.read()
                self.send_headers(True)
                self.write_chunk(content)
+
 
 port = 13441
 
